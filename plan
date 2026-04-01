@@ -1,0 +1,5 @@
+1- RestAPI with NodeJS to manage authentication:
+registration using email and password
+forget password option
+moitoring the system into a loggin file
+2- transform it into TypeScript
