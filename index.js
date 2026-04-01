@@ -1,6 +1,8 @@
 const http = require('http');
 require('dotenv').config();
+const jwt = require('jsonwebtoken');
 const PORT = process.env.PORT
+const SECRET = process.env.SECRET
 const users = [
    { id: 1, name: 'Chaouki Kess', email: 'chaouki.kess092@gmail.com', password: '123', role: 'admin' },
    { id: 2, name: 'Sara Benali', email: 'sara.benali@gmail.com', password: 'abc123', role: 'user' },
@@ -41,6 +43,7 @@ const server = http.createServer((req,res)=>{
             res.write('Missing informations');
             return res.end();
          }
+
          const user = users.find(x=>x.email === email);
        
          if(!user){
@@ -50,9 +53,17 @@ const server = http.createServer((req,res)=>{
          }
 
          if(user.password === password){
-            res.statusCode = 200;
-            res.setHeader('Content-Type', "text/plain")
-            res.write(`Welcome ${email}`);
+            const token = jwt.sign({id:user.id,password:user.password,role:user.role},SECRET,{
+               expiresIn:"1d",
+            });
+
+            res.setHeader('Set-Cookie', [
+               `token=${token};HttpOnly;path=/;SameSite = Lax`
+            ])
+
+            res.statusCode = 302;
+            
+            res.setHeader('Location','/me');
             return res.end();
          }else{
             res.statusCode = 401;
@@ -61,7 +72,7 @@ const server = http.createServer((req,res)=>{
          }
         
       });
-   }else if(url === '/auth/signup' && method === "POST"){
+   } else if(url === '/auth/signup' && method === "POST"){
       let body = "";
 
       res.setHeader('Content-Type','text/plain');
@@ -97,7 +108,24 @@ const server = http.createServer((req,res)=>{
          res.write(`A new user is created, Welcome: ${name}`);
          return res.end();
       })
-   }else{
+   } else if (url ==='/me' && method ==='GET'){
+
+      let rawPayload = req.headers.cookie;
+      if(!rawPayload) return null;
+      const cookies = {};
+
+      rawPayload.split(';').forEach(pair =>{
+         const [key,value] = pair.trim().split('=');
+         cookies[key] = value;
+      })
+
+      let token = cookies['token'];
+      console.log(token);
+      const payload = jwt.verify(token,SECRET);
+      res.statusCode = 200;
+      res.write(`welcome:${payload.id}`);
+      return res.end();
+   } else{
       res.statusCode = 404;
       res.write('Route is not found');
       res.end();
